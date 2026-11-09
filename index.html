@@ -8,17 +8,36 @@
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   <style>
     body { margin: 0; }
-    #subtitulo {
-      position: fixed; left: 5%; right: 5%; bottom: 6%; z-index: 10;
-      display: none; padding: 14px 18px; border-radius: 14px;
-      background: rgba(0,0,0,0.75); color: #fff;
-      font-family: sans-serif; font-size: 18px; line-height: 1.35; text-align: center;
+    #burbuja {
+      position: fixed; z-index: 10; display: none;
+      left: 50%; top: 22%; transform: translate(-50%, -100%);
+      width: min(84vw, 380px); box-sizing: border-box;
+      padding: 14px 16px 10px; background: #fff; color: #222;
+      border: 3px solid #222; border-radius: 22px;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.25);
+      font-family: sans-serif; font-size: 16px; line-height: 1.35;
+      cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation;
     }
+    /* colita de la burbuja (apunta hacia la arqueóloga) */
+    #burbuja::before {
+      content: ""; position: absolute; left: 50%; bottom: -17px; transform: translateX(-50%);
+      border: 12px solid transparent; border-top: 16px solid #222; border-bottom: 0;
+    }
+    #burbuja::after {
+      content: ""; position: absolute; left: 50%; bottom: -11px; transform: translateX(-50%);
+      border: 10px solid transparent; border-top: 13px solid #fff; border-bottom: 0;
+    }
+    #oculto { opacity: 0; }
+    #pie { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 13px; color: #666; }
+    #puntos { letter-spacing: 3px; }
   </style>
 </head>
 <body>
 
-  <div id="subtitulo"></div>
+  <div id="burbuja">
+    <div><span id="visible"></span><span id="oculto"></span></div>
+    <div id="pie"><span id="puntos"></span><span id="aviso"></span></div>
+  </div>
 
   <a-scene mindar-image="imageTargetSrc: ./targets.mind;"
            color-space="sRGB"
@@ -41,34 +60,36 @@
     <a-entity id="objetivo" mindar-image-target="targetIndex: 0">
 
       <!-- "grupo" es toda la arqueóloga. Su tamaño y posición se ajustan en el script (ALTO, X, Y, Z).
-           Adentro, cada parte mide 1 de ancho por 2.9225 de alto (la proporción de tus PNG). -->
+           Adentro, cada parte mide 1 de ancho por 2.7251 de alto (la proporción de tus PNG). -->
       <a-entity id="grupo">
+        <!-- punto de anclaje de la burbuja (encima del sombrero) -->
+        <a-entity id="ancla-burbuja" position="-0.04 1.40 0.05"></a-entity>
         <a-entity animation="property: position; from: 0 0 0; to: 0 0.03 0; dir: alternate; dur: 1800; loop: true; easing: easeInOutSine">
 
-          <a-image data-orden="1" src="#i-cuerpo" width="1" height="2.9225" position="0 0 0"
+          <a-image data-orden="1" src="#i-cuerpo" width="1" height="2.7251" position="0 0 0"
                    material="shader: flat; transparent: true; depthWrite: false"></a-image>
 
           <!-- Brazo: gira desde el codo, como un saludo -->
-          <a-entity position="0.3034 0.3232 0">
-            <a-entity animation="property: rotation; from: 0 0 -8; to: 0 0 8; dir: alternate; dur: 700; loop: true; easing: easeInOutSine">
-              <a-image data-orden="2" src="#i-brazo" width="1" height="2.9225" position="-0.3034 -0.3232 0"
+          <a-entity position="0.2669 0.3267 0">
+            <a-entity animation="property: rotation; from: 0 0 -5; to: 0 0 5; dir: alternate; dur: 900; loop: true; easing: easeInOutSine">
+              <a-image data-orden="2" src="#i-brazo" width="1" height="2.7251" position="-0.2669 -0.3267 0"
                        material="shader: flat; transparent: true; depthWrite: false"></a-image>
             </a-entity>
           </a-entity>
 
           <!-- Cabeza y cara: se inclinan apenas desde el cuello -->
-          <a-entity position="-0.0369 0.8186 0">
+          <a-entity position="-0.0378 0.7848 0">
             <a-entity animation="property: rotation; from: 0 0 -1.5; to: 0 0 1.5; dir: alternate; dur: 2200; loop: true; easing: easeInOutSine">
-              <a-entity position="0.0369 -0.8186 0">
-                <a-image data-orden="3" src="#i-cabeza" width="1" height="2.9225" position="0 0 0"
+              <a-entity position="0.0378 -0.7848 0">
+                <a-image data-orden="3" src="#i-cabeza" width="1" height="2.7251" position="0 0 0"
                          material="shader: flat; transparent: true; depthWrite: false"></a-image>
-                <a-image data-orden="4" id="ojos-abiertos" src="#i-ojos-abiertos" width="1" height="2.9225" position="0 0 0"
+                <a-image data-orden="4" id="ojos-abiertos" src="#i-ojos-abiertos" width="1" height="2.7251" position="0 0 0"
                          material="shader: flat; transparent: true; depthWrite: false"></a-image>
-                <a-image data-orden="4" id="ojos-cerrados" src="#i-ojos-cerrados" width="1" height="2.9225" position="0 0 0" visible="false"
+                <a-image data-orden="4" id="ojos-cerrados" src="#i-ojos-cerrados" width="1" height="2.7251" position="0 0 0" visible="false"
                          material="shader: flat; transparent: true; depthWrite: false"></a-image>
-                <a-image data-orden="5" id="boca-cerrada" src="#i-boca-cerrada" width="1" height="2.9225" position="0 0 0"
+                <a-image data-orden="5" id="boca-cerrada" src="#i-boca-cerrada" width="1" height="2.7251" position="0 0 0"
                          material="shader: flat; transparent: true; depthWrite: false"></a-image>
-                <a-image data-orden="5" id="boca-abierta" src="#i-boca-abierta" width="1" height="2.9225" position="0 0 0" visible="false"
+                <a-image data-orden="5" id="boca-abierta" src="#i-boca-abierta" width="1" height="2.7251" position="0 0 0" visible="false"
                          material="shader: flat; transparent: true; depthWrite: false"></a-image>
               </a-entity>
             </a-entity>
@@ -81,31 +102,37 @@
 
   <script>
     // ===== AJUSTES DE TAMAÑO Y POSICIÓN =====
-    // El ancho del folleto vale 1 y el alto vale 0.71 (tu folleto es apaisado).
+    // El ancho del folleto vale 1 y el alto vale 0.71 (tu folleto es apaisado). Los bordes son X: -0.5 a 0.5 e Y: -0.35 a 0.35.
     const ALTO = 0.7;   // alto de la arqueóloga. 0.7 = casi todo el alto del folleto. Probá 0.5 para más chica.
     const X = 0;        // izquierda (negativo) / derecha (positivo). El borde está en -0.5 y 0.5.
     const Y = 0;        // abajo (negativo) / arriba (positivo). El borde está en -0.35 y 0.35.
     const Z = 0.12;     // cuánto sobresale del papel. Más alto = más separada.
 
     // ===== LO QUE DICE LA ARQUEÓLOGA =====
-    // "t" es el texto y "ms" cuántos milisegundos se muestra (4000 = 4 segundos).
+    // Cada línea es una burbuja. La persona toca la burbuja para pasar a la siguiente.
+    // Para agregar o quitar burbujas, copiá o borrá una línea (cuidá la coma al final, menos en la última).
     const frases = [
-      { t: "¡Hola! Soy la arqueóloga y te voy a contar algo que no está en el folleto.", ms: 4500 },
-      { t: "Acá va el segundo dato interesante.", ms: 4000 },
-      { t: "Y este es el tercero. ¡Gracias por visitarnos!", ms: 4000 }
-    ];
+      "El edificio del Museo Etnográfico tiene una conexión directa con Santa Fe la Vieja: en sus cimientos se colocaron ladrillos provenientes de las ruinas de la antigua ciudad.",
+      "El Museo Etnográfico y Colonial fue creado en 1941. Diez años después recibió el nombre de Juan de Garay, en homenaje al fundador de Santa Fe.",
+      "La colección del museo incluye piezas de sociedades cazadoras, recolectoras, pescadoras y horticultoras que habitaron la región del Paraná y la llanura pampeana desde hace 2.000 años, antes de la llegada de los españoles."
+    ]
 
     const escena = document.querySelector('a-scene');
     const objetivo = document.querySelector('#objetivo');
     const grupo = document.querySelector('#grupo');
-    const sub = document.querySelector('#subtitulo');
+    const burbuja = document.querySelector('#burbuja');
+    const txtVisible = document.querySelector('#visible');
+    const txtOculto = document.querySelector('#oculto');
+    const puntos = document.querySelector('#puntos');
+    const aviso = document.querySelector('#aviso');
+    const ancla = document.querySelector('#ancla-burbuja');
     const ojosA = document.querySelector('#ojos-abiertos');
     const ojosC = document.querySelector('#ojos-cerrados');
     const bocaC = document.querySelector('#boca-cerrada');
     const bocaA = document.querySelector('#boca-abierta');
 
     // Tamaño y posición
-    const s = ALTO / 2.9225;
+    const s = ALTO / 2.7251;
     grupo.setAttribute('scale', s + ' ' + s + ' ' + s);
     grupo.setAttribute('position', X + ' ' + Y + ' ' + Z);
 
@@ -119,31 +146,93 @@
     if (escena.hasLoaded) ordenarCapas(); else escena.addEventListener('loaded', ordenarCapas);
 
     let hablando = false, bocaAbierta = false;
-    let indice = 0, temporizador = null;
+    let indice = 0, escribiendo = false, reloj = null, visible = false;
 
-    function mostrarFrase() {
+    function pintar(n) {
       const f = frases[indice];
-      sub.textContent = f.t;
-      sub.style.display = 'block';
-      hablando = true;
-      temporizador = setTimeout(function () {
-        hablando = false;
-        indice = (indice + 1) % frases.length;
-        temporizador = setTimeout(mostrarFrase, 700); // pausa entre frases
-      }, f.ms);
+      txtVisible.textContent = f.slice(0, n);
+      txtOculto.textContent = f.slice(n);   // reserva el espacio para que la burbuja no salte
     }
+
+    function marcarPuntos() {
+      let p = '';
+      for (let i = 0; i < frases.length; i++) p += (i === indice ? '●' : '○');
+      puntos.textContent = p;
+    }
+
+    function terminarDeEscribir() {
+      clearInterval(reloj);
+      escribiendo = false;
+      hablando = false;
+      pintar(frases[indice].length);
+      aviso.textContent = (indice === frases.length - 1) ? 'Tocá para repetir ↻' : 'Tocá para seguir ▸';
+    }
+
+    function empezarFrase() {
+      clearInterval(reloj);
+      marcarPuntos();
+      aviso.textContent = '';
+      escribiendo = true;
+      hablando = true;
+      let n = 0;
+      pintar(0);
+      reloj = setInterval(function () {
+        n++;
+        pintar(n);
+        if (n >= frases[indice].length) terminarDeEscribir();
+      }, 22);
+    }
+
+    // Tocar la burbuja: si todavía escribe, muestra todo; si no, pasa a la siguiente
+    burbuja.addEventListener('click', function () {
+      if (escribiendo) {
+        terminarDeEscribir();
+      } else {
+        indice = (indice + 1) % frases.length;
+        empezarFrase();
+      }
+    });
 
     // Se activa sola cuando la cámara reconoce el folleto
     objetivo.addEventListener('targetFound', function () {
-      if (!temporizador) mostrarFrase();
+      visible = true;
+      indice = 0;
+      burbuja.style.display = 'block';
+      empezarFrase();
     });
     objetivo.addEventListener('targetLost', function () {
-      clearTimeout(temporizador);
-      temporizador = null;
+      visible = false;
+      clearInterval(reloj);
+      escribiendo = false;
       hablando = false;
-      indice = 0;
-      sub.style.display = 'none';
+      burbuja.style.display = 'none';
     });
+
+    // La burbuja sigue a la arqueóloga en la pantalla
+    const T3 = AFRAME.THREE;
+    const punto = new T3.Vector3();
+    function seguirBurbuja() {
+      if (visible) {
+        const camObj = document.querySelector('a-camera').getObject3D('camera');
+        if (camObj && ancla.object3D) {
+          ancla.object3D.updateWorldMatrix(true, false);
+          punto.setFromMatrixPosition(ancla.object3D.matrixWorld);
+          punto.project(camObj);
+          let x = (punto.x * 0.5 + 0.5) * window.innerWidth;
+          let y = (-punto.y * 0.5 + 0.5) * window.innerHeight;
+          if (isFinite(x) && isFinite(y)) {
+            const ancho = burbuja.offsetWidth, alto = burbuja.offsetHeight;
+            x = Math.min(Math.max(x, ancho / 2 + 8), window.innerWidth - ancho / 2 - 8);
+            y = Math.max(y, alto + 24);          // que no se salga por arriba
+            y = Math.min(y, window.innerHeight - 8);
+            burbuja.style.left = x + 'px';
+            burbuja.style.top = y + 'px';
+          }
+        }
+      }
+      requestAnimationFrame(seguirBurbuja);
+    }
+    seguirBurbuja();
 
     // Boca: se abre y se cierra mientras "habla"
     setInterval(function () {
