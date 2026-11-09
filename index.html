@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Folleto con realidad aumentada</title>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <style>
+    body { margin: 0; }
+    #subtitulo {
+      position: fixed; left: 5%; right: 5%; bottom: 6%; z-index: 10;
+      display: none; padding: 14px 18px; border-radius: 14px;
+      background: rgba(0,0,0,0.75); color: #fff;
+      font-family: sans-serif; font-size: 18px; line-height: 1.35; text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="subtitulo"></div>
+
+  <a-scene mindar-image="imageTargetSrc: ./targets.mind;"
+           color-space="sRGB"
+           renderer="colorManagement: true, physicallyCorrectLights"
+           vr-mode-ui="enabled: false"
+           device-orientation-permission-ui="enabled: false">
+
+    <a-assets>
+      <img id="i-cuerpo" src="./cuerpo.png">
+      <img id="i-cabeza" src="./cabeza.png">
+      <img id="i-ojos-abiertos" src="./ojos-abiertos.png">
+      <img id="i-ojos-cerrados" src="./ojos-cerrados.png">
+      <img id="i-boca-cerrada" src="./boca-cerrada.png">
+      <img id="i-boca-abierta" src="./boca-abierta.png">
+      <img id="i-brazo" src="./brazo.png">
+    </a-assets>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <a-entity id="objetivo" mindar-image-target="targetIndex: 0">
+
+      <!-- "grupo" es toda la arqueóloga. Su tamaño y posición se ajustan en el script (ALTO, X, Y, Z).
+           Adentro, cada parte mide 1 de ancho por 2.9225 de alto (la proporción de tus PNG). -->
+      <a-entity id="grupo">
+        <a-entity animation="property: position; from: 0 0 0; to: 0 0.03 0; dir: alternate; dur: 1800; loop: true; easing: easeInOutSine">
+
+          <a-image data-orden="1" src="#i-cuerpo" width="1" height="2.9225" position="0 0 0"
+                   material="shader: flat; transparent: true; depthWrite: false"></a-image>
+
+          <!-- Brazo: gira desde el codo, como un saludo -->
+          <a-entity position="0.3034 0.3232 0">
+            <a-entity animation="property: rotation; from: 0 0 -8; to: 0 0 8; dir: alternate; dur: 700; loop: true; easing: easeInOutSine">
+              <a-image data-orden="2" src="#i-brazo" width="1" height="2.9225" position="-0.3034 -0.3232 0"
+                       material="shader: flat; transparent: true; depthWrite: false"></a-image>
+            </a-entity>
+          </a-entity>
+
+          <!-- Cabeza y cara: se inclinan apenas desde el cuello -->
+          <a-entity position="-0.0369 0.8186 0">
+            <a-entity animation="property: rotation; from: 0 0 -1.5; to: 0 0 1.5; dir: alternate; dur: 2200; loop: true; easing: easeInOutSine">
+              <a-entity position="0.0369 -0.8186 0">
+                <a-image data-orden="3" src="#i-cabeza" width="1" height="2.9225" position="0 0 0"
+                         material="shader: flat; transparent: true; depthWrite: false"></a-image>
+                <a-image data-orden="4" id="ojos-abiertos" src="#i-ojos-abiertos" width="1" height="2.9225" position="0 0 0"
+                         material="shader: flat; transparent: true; depthWrite: false"></a-image>
+                <a-image data-orden="4" id="ojos-cerrados" src="#i-ojos-cerrados" width="1" height="2.9225" position="0 0 0" visible="false"
+                         material="shader: flat; transparent: true; depthWrite: false"></a-image>
+                <a-image data-orden="5" id="boca-cerrada" src="#i-boca-cerrada" width="1" height="2.9225" position="0 0 0"
+                         material="shader: flat; transparent: true; depthWrite: false"></a-image>
+                <a-image data-orden="5" id="boca-abierta" src="#i-boca-abierta" width="1" height="2.9225" position="0 0 0" visible="false"
+                         material="shader: flat; transparent: true; depthWrite: false"></a-image>
+              </a-entity>
+            </a-entity>
+          </a-entity>
+
+        </a-entity>
+      </a-entity>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    // ===== AJUSTES DE TAMAÑO Y POSICIÓN =====
+    // El ancho del folleto vale 1 y el alto vale 0.71 (tu folleto es apaisado).
+    const ALTO = 0.7;   // alto de la arqueóloga. 0.7 = casi todo el alto del folleto. Probá 0.5 para más chica.
+    const X = 0;        // izquierda (negativo) / derecha (positivo). El borde está en -0.5 y 0.5.
+    const Y = 0;        // abajo (negativo) / arriba (positivo). El borde está en -0.35 y 0.35.
+    const Z = 0.12;     // cuánto sobresale del papel. Más alto = más separada.
+
+    // ===== LO QUE DICE LA ARQUEÓLOGA =====
+    // "t" es el texto y "ms" cuántos milisegundos se muestra (4000 = 4 segundos).
+    const frases = [
+      { t: "¡Hola! Soy la arqueóloga y te voy a contar algo que no está en el folleto.", ms: 4500 },
+      { t: "Acá va el segundo dato interesante.", ms: 4000 },
+      { t: "Y este es el tercero. ¡Gracias por visitarnos!", ms: 4000 }
+    ];
+
+    const escena = document.querySelector('a-scene');
+    const objetivo = document.querySelector('#objetivo');
+    const grupo = document.querySelector('#grupo');
+    const sub = document.querySelector('#subtitulo');
+    const ojosA = document.querySelector('#ojos-abiertos');
+    const ojosC = document.querySelector('#ojos-cerrados');
+    const bocaC = document.querySelector('#boca-cerrada');
+    const bocaA = document.querySelector('#boca-abierta');
+
+    // Tamaño y posición
+    const s = ALTO / 2.9225;
+    grupo.setAttribute('scale', s + ' ' + s + ' ' + s);
+    grupo.setAttribute('position', X + ' ' + Y + ' ' + Z);
+
+    // Orden de capas (para que las partes no se tapen mal entre sí)
+    function ordenarCapas() {
+      document.querySelectorAll('[data-orden]').forEach(function (el) {
+        const m = el.getObject3D('mesh');
+        if (m) m.renderOrder = parseInt(el.dataset.orden, 10);
+      });
+    }
+    if (escena.hasLoaded) ordenarCapas(); else escena.addEventListener('loaded', ordenarCapas);
+
+    let hablando = false, bocaAbierta = false;
+    let indice = 0, temporizador = null;
+
+    function mostrarFrase() {
+      const f = frases[indice];
+      sub.textContent = f.t;
+      sub.style.display = 'block';
+      hablando = true;
+      temporizador = setTimeout(function () {
+        hablando = false;
+        indice = (indice + 1) % frases.length;
+        temporizador = setTimeout(mostrarFrase, 700); // pausa entre frases
+      }, f.ms);
+    }
+
+    // Se activa sola cuando la cámara reconoce el folleto
+    objetivo.addEventListener('targetFound', function () {
+      if (!temporizador) mostrarFrase();
+    });
+    objetivo.addEventListener('targetLost', function () {
+      clearTimeout(temporizador);
+      temporizador = null;
+      hablando = false;
+      indice = 0;
+      sub.style.display = 'none';
+    });
+
+    // Boca: se abre y se cierra mientras "habla"
+    setInterval(function () {
+      bocaAbierta = hablando ? !bocaAbierta : false;
+      bocaA.setAttribute('visible', bocaAbierta);
+      bocaC.setAttribute('visible', !bocaAbierta);
+    }, 160);
+
+    // Parpadeo cada 2 a 5 segundos
+    function parpadear() {
+      ojosA.setAttribute('visible', false);
+      ojosC.setAttribute('visible', true);
+      setTimeout(function () {
+        ojosA.setAttribute('visible', true);
+        ojosC.setAttribute('visible', false);
+      }, 150);
+      setTimeout(parpadear, 2000 + Math.random() * 3000);
+    }
+    parpadear();
+  </script>
+</body>
+</html>
