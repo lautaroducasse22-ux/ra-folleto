@@ -27,6 +27,17 @@
       content: ""; position: absolute; left: 50%; bottom: -11px; transform: translateX(-50%);
       border: 10px solid transparent; border-top: 13px solid #fff; border-bottom: 0;
     }
+    #inicio {
+      position: fixed; inset: 0; z-index: 20;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: #1b1b1b; color: #fff; font-family: sans-serif; text-align: center; padding: 24px;
+    }
+    #inicio h2 { margin: 0 0 8px; }
+    #inicio p { margin: 6px 0; max-width: 320px; line-height: 1.4; }
+    #inicio button {
+      font-size: 20px; padding: 16px 34px; border: 0; border-radius: 999px;
+      background: #fff; color: #1b1b1b; margin-top: 22px;
+    }
     #oculto { opacity: 0; }
     #pie { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 13px; color: #666; }
     #puntos { letter-spacing: 3px; }
@@ -34,12 +45,19 @@
 </head>
 <body>
 
+  <div id="inicio">
+    <h2>Realidad aumentada</h2>
+    <p>Tocá el botón, permití la cámara y apuntá al folleto.</p>
+    <p>🔊 Subí el volumen para escuchar a la arqueóloga.</p>
+    <button id="btn">Tocar para comenzar</button>
+  </div>
+
   <div id="burbuja">
     <div><span id="visible"></span><span id="oculto"></span></div>
     <div id="pie"><span id="puntos"></span><span id="aviso"></span></div>
   </div>
 
-  <a-scene mindar-image="imageTargetSrc: ./targets.mind;"
+  <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;"
            color-space="sRGB"
            renderer="colorManagement: true, physicallyCorrectLights"
            vr-mode-ui="enabled: false"
@@ -104,18 +122,25 @@
     // ===== AJUSTES DE TAMAÑO Y POSICIÓN =====
     // El ancho del folleto vale 1 y el alto vale 0.71 (tu folleto es apaisado). Los bordes son X: -0.5 a 0.5 e Y: -0.35 a 0.35.
     const ALTO = 0.7;   // alto de la arqueóloga. 0.7 = casi todo el alto del folleto. Probá 0.5 para más chica.
-    const X = 0;        // izquierda (negativo) / derecha (positivo). El borde está en -0.5 y 0.5.
-    const Y = 0;        // abajo (negativo) / arriba (positivo). El borde está en -0.35 y 0.35.
+    const X = 0;        // izquierda (negativo) / derecha (positivo).
+    const Y = 0;        // abajo (negativo) / arriba (positivo).
     const Z = 0.12;     // cuánto sobresale del papel. Más alto = más separada.
 
+    // ===== VOZ =====
+    // "archivos": usa tus grabaciones (audio1.mp3, audio2.mp3...), una por burbuja y en el mismo orden.
+    // "celular": el celular lee el texto con su voz sintética (no hace falta subir archivos, pero la voz cambia según el aparato).
+    // "ninguna": sin sonido, solo texto.
+    const VOZ = "celular";
+
     // ===== LO QUE DICE LA ARQUEÓLOGA =====
-    // Cada línea es una burbuja. La persona toca la burbuja para pasar a la siguiente.
-    // Para agregar o quitar burbujas, copiá o borrá una línea (cuidá la coma al final, menos en la última).
+    // Cada bloque es una burbuja. "t" es el texto y "audio" es el nombre de la grabación de esa burbuja.
     const frases = [
-      "El edificio del Museo Etnográfico tiene una conexión directa con Santa Fe la Vieja: en sus cimientos se colocaron ladrillos provenientes de las ruinas de la antigua ciudad.",
-      "El Museo Etnográfico y Colonial fue creado en 1941. Diez años después recibió el nombre de Juan de Garay, en homenaje al fundador de Santa Fe.",
-      "La colección del museo incluye piezas de sociedades cazadoras, recolectoras, pescadoras y horticultoras que habitaron la región del Paraná y la llanura pampeana desde hace 2.000 años, antes de la llegada de los españoles."
-    ]
+      { t: "¡Hola! Soy la arqueóloga y hoy te voy a contar algunos secretos del Museo Etnográfico y de Santa Fe la Vieja.", audio: "audio1.mp3" },
+      { t: "El edificio del Museo Etnográfico tiene una conexión directa con Santa Fe la Vieja: en sus cimientos se colocaron ladrillos provenientes de las ruinas de la antigua ciudad.", audio: "audio2.mp3" },
+      { t: "El Museo Etnográfico y Colonial fue creado en 1941. Diez años después recibió el nombre de Juan de Garay, en homenaje al fundador de Santa Fe.", audio: "audio3.mp3" },
+      { t: "La colección del museo incluye piezas de sociedades cazadoras, recolectoras, pescadoras y horticultoras que habitaron la región del Paraná y la llanura pampeana desde hace 2.000 años, antes de la llegada de los españoles.", audio: "audio4.mp3" },
+      { t: "¡Gracias por acompañarme! Te espero en el museo para que sigas descubriendo la historia de Santa Fe.", audio: "audio5.mp3" }
+    ];
 
     const escena = document.querySelector('a-scene');
     const objetivo = document.querySelector('#objetivo');
@@ -126,6 +151,8 @@
     const puntos = document.querySelector('#puntos');
     const aviso = document.querySelector('#aviso');
     const ancla = document.querySelector('#ancla-burbuja');
+    const inicio = document.querySelector('#inicio');
+    const btn = document.querySelector('#btn');
     const ojosA = document.querySelector('#ojos-abiertos');
     const ojosC = document.querySelector('#ojos-cerrados');
     const bocaC = document.querySelector('#boca-cerrada');
@@ -145,11 +172,17 @@
     }
     if (escena.hasLoaded) ordenarCapas(); else escena.addEventListener('loaded', ordenarCapas);
 
-    let hablando = false, bocaAbierta = false;
-    let indice = 0, escribiendo = false, reloj = null, visible = false;
+    // ===== Reproductor y estado =====
+    const voz = new Audio();            // un solo reproductor, que se "desbloquea" con el toque inicial
+    voz.preload = 'auto';
+    const sintetizador = window.speechSynthesis;
+
+    let escribiendo = false;            // el texto se está escribiendo
+    let sonando = false;                // la voz está sonando
+    let indice = 0, ficha = 0, reloj = null, enPantalla = false;
 
     function pintar(n) {
-      const f = frases[indice];
+      const f = frases[indice].t;
       txtVisible.textContent = f.slice(0, n);
       txtOculto.textContent = f.slice(n);   // reserva el espacio para que la burbuja no salte
     }
@@ -160,51 +193,124 @@
       puntos.textContent = p;
     }
 
-    function terminarDeEscribir() {
+    function detenerVoz() {
+      voz.onloadedmetadata = null; voz.onended = null; voz.onerror = null;
+      try { voz.pause(); } catch (e) {}
+      if (sintetizador) sintetizador.cancel();
+      sonando = false;
+    }
+
+    function terminarEscritura() {
       clearInterval(reloj);
       escribiendo = false;
-      hablando = false;
-      pintar(frases[indice].length);
+      pintar(frases[indice].t.length);
       aviso.textContent = (indice === frases.length - 1) ? 'Tocá para repetir ↻' : 'Tocá para seguir ▸';
     }
 
-    function empezarFrase() {
+    function escribir(msPorLetra, token) {
+      if (token !== ficha || !escribiendo) return;
       clearInterval(reloj);
-      marcarPuntos();
-      aviso.textContent = '';
-      escribiendo = true;
-      hablando = true;
       let n = 0;
       pintar(0);
       reloj = setInterval(function () {
         n++;
         pintar(n);
-        if (n >= frases[indice].length) terminarDeEscribir();
-      }, 22);
+        if (n >= frases[indice].t.length) terminarEscritura();
+      }, msPorLetra);
     }
 
-    // Tocar la burbuja: si todavía escribe, muestra todo; si no, pasa a la siguiente
+    function empezarFrase() {
+      ficha++;
+      const token = ficha;
+      clearInterval(reloj);
+      detenerVoz();
+      marcarPuntos();
+      aviso.textContent = '';
+      escribiendo = true;
+      pintar(0);
+      const f = frases[indice];
+
+      if (VOZ === 'archivos' && f.audio) {
+        let arranco = false;
+        const arrancar = function (ms) {
+          if (arranco || token !== ficha) return;
+          arranco = true;
+          escribir(ms, token);
+        };
+        voz.onloadedmetadata = function () {
+          const d = voz.duration;
+          arrancar((isFinite(d) && d > 0) ? Math.max(15, (d * 1000 * 0.92) / f.t.length) : 22);
+        };
+        voz.onerror = function () { if (token === ficha) sonando = false; arrancar(22); };
+        voz.onended = function () { if (token === ficha) sonando = false; };
+        voz.src = f.audio;
+        sonando = true;
+        const p = voz.play();
+        if (p && p.catch) p.catch(function () { if (token === ficha) sonando = false; arrancar(22); });
+        setTimeout(function () { arrancar(22); }, 1500);   // por si el audio tarda o no existe
+
+      } else if (VOZ === 'celular' && sintetizador) {
+        const u = new SpeechSynthesisUtterance(f.t);
+        u.lang = 'es-AR';
+        const voces = sintetizador.getVoices();
+        const es = voces.find(function (v) { return /^es[-_]AR/i.test(v.lang); }) ||
+                   voces.find(function (v) { return /^es/i.test(v.lang); });
+        if (es) u.voice = es;
+        u.onend = function () { if (token === ficha) sonando = false; };
+        u.onerror = function () { if (token === ficha) sonando = false; };
+        sonando = true;
+        sintetizador.speak(u);
+        escribir(62, token);
+
+      } else {
+        escribir(22, token);
+      }
+    }
+
+    // Tocar la burbuja: si todavía escribe, muestra todo el texto; si no, pasa a la siguiente
     burbuja.addEventListener('click', function () {
       if (escribiendo) {
-        terminarDeEscribir();
+        terminarEscritura();
       } else {
         indice = (indice + 1) % frases.length;
         empezarFrase();
       }
     });
 
+    // Botón inicial: desbloquea el sonido y enciende la cámara
+    btn.addEventListener('click', function () {
+      if (VOZ === 'archivos') {
+        try {
+          voz.src = frases[0].audio;
+          const p = voz.play();
+          if (p && p.then) p.then(function () { voz.pause(); voz.currentTime = 0; }).catch(function () {});
+        } catch (e) {}
+      }
+      if (VOZ === 'celular' && sintetizador) {
+        try {
+          const u = new SpeechSynthesisUtterance(' ');
+          u.volume = 0;
+          sintetizador.speak(u);
+        } catch (e) {}
+      }
+      inicio.style.display = 'none';
+      const arrancarCamara = function () { escena.systems['mindar-image-system'].start(); };
+      if (escena.hasLoaded) arrancarCamara(); else escena.addEventListener('loaded', arrancarCamara);
+    });
+
     // Se activa sola cuando la cámara reconoce el folleto
     objetivo.addEventListener('targetFound', function () {
-      visible = true;
+      enPantalla = true;
       indice = 0;
       burbuja.style.display = 'block';
       empezarFrase();
     });
     objetivo.addEventListener('targetLost', function () {
-      visible = false;
+      enPantalla = false;
+      ficha++;
       clearInterval(reloj);
       escribiendo = false;
-      hablando = false;
+      detenerVoz();
       burbuja.style.display = 'none';
     });
 
@@ -212,7 +318,7 @@
     const T3 = AFRAME.THREE;
     const punto = new T3.Vector3();
     function seguirBurbuja() {
-      if (visible) {
+      if (enPantalla) {
         const camObj = document.querySelector('a-camera').getObject3D('camera');
         if (camObj && ancla.object3D) {
           ancla.object3D.updateWorldMatrix(true, false);
@@ -235,8 +341,9 @@
     seguirBurbuja();
 
     // Boca: se abre y se cierra mientras "habla"
+    let bocaAbierta = false;
     setInterval(function () {
-      bocaAbierta = hablando ? !bocaAbierta : false;
+      bocaAbierta = (escribiendo || sonando) ? !bocaAbierta : false;
       bocaA.setAttribute('visible', bocaAbierta);
       bocaC.setAttribute('visible', !bocaAbierta);
     }, 160);
